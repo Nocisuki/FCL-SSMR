@@ -4,8 +4,10 @@ from torch import nn
 from torch.nn.utils import remove_weight_norm
 
 from covns.cifar_resnet import resnet32
+from covns.cnn import SyntheticCNN
 from covns.linears import SimpleLinear
 from covns.resnet import resnet18
+from covns.vgg import VGG
 
 
 def get_convnet(args, pretrained=False):
@@ -14,6 +16,10 @@ def get_convnet(args, pretrained=False):
         return resnet32()
     elif name == "resnet18":
         return resnet18(pretrained=pretrained,args=args)
+    elif name == "cnn":
+        return SyntheticCNN(args=args)
+    elif name == "vgg":
+        return VGG(args=args)
     else:
         raise NotImplementedError("Unknown type {}".format(name))
 
@@ -73,7 +79,6 @@ class IncrementalNet(BaseNet):
             self.set_gradcam_hook()
 
 
-
     def update_fc(self, nb_classes):
         fc = self.generate_fc(self.feature_dim, nb_classes)
         if self.fc is not None:
@@ -125,3 +130,4 @@ class IncrementalNet(BaseNet):
         self._gradcam_hooks[1] = self.convnet.last_conv.register_forward_hook(
             forward_hook
         )
+

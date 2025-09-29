@@ -6,7 +6,7 @@ from torch.backends import cudnn
 from wandb.wandb_torch import torch
 import torch, copy
 import os, pdb, random
-from utils.dataset import iCIFAR10, iCIFAR100, iMNIST
+from utils.dataset import iCIFAR10, iCIFAR100, iMNIST, TinyImageNet200
 
 
 def setup_seed(seed):
@@ -32,7 +32,6 @@ def partition_data(y_train, beta=0.4, n_parties=5):
     elif beta > 0:  # for niid
         indices = np.arange(data_size)
 
-        # 随机打乱这些索引
         np.random.seed(402)
         np.random.shuffle(indices)
 
@@ -74,15 +73,27 @@ def _map_new_class_index(y, order):
 
 def get_increment_task(dataset, tasks, overlap_rate=None):
     if dataset == "cifar10" or dataset == "mnist":
-        increment_task = [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
+        increment_task = [[0, 1, 2, 3], [3, 4, 5, 6], [6, 7, 8, 9]]
     elif dataset == "cifar100":
         if tasks == 5:
             if overlap_rate == 0.4:
-                increment_task = []
+                n_task, cls_per_task, share = 5, 20, 8
+                increment_task = [list(range(t * (cls_per_task - share),
+                                     t * (cls_per_task - share) + cls_per_task))
+                          for t in range(n_task)]
 
         else:
             if overlap_rate == 0.4:
-                increment_task = []
+                n_task, cls_per_task, share = 10, 10, 4
+                increment_task = [list(range(t * (cls_per_task - share),
+                                     t * (cls_per_task - share) + cls_per_task))
+                          for t in range(n_task)]
+    
+    elif dataset == "tiny_imagenet":
+        n_task, cls_per_task, share = 10, 20, 8
+        increment_task = [list(range(t * (cls_per_task - share),
+                                     t * (cls_per_task - share) + cls_per_task))
+                          for t in range(n_task)]
 
     return increment_task
 
@@ -234,9 +245,8 @@ class DataManager(object):
             print(f"Selected classes to modify: {selected_classes}")
             num_overlap = int(len(all_classes) * self.overlap_rate)
             overlap_classes = all_classes[-num_overlap:]
-            # print(overlap_classes)
 
-            # setup_seed(410)  # 410  # 420
+            # setup_seed(410)
             for class_to_modify in selected_classes:
                 modify_idx = np.where(targets == class_to_modify)[0]
                 num_modify = int(len(modify_idx) * 0.5)
@@ -283,20 +293,38 @@ class DataManager(object):
 
     def _select(self, x, y, low_range, high_range):
         idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
-        return x[idxes], y[idxes]
+        # x may list(path) 
+        selected_x = [x[i] for i in idxes]
+        selected_y = y[idxes]
+        return selected_x, selected_y
 
     def _select_rmm(self, x, y, low_range, high_range, m_rate):
         assert m_rate is not None
+        idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
         if m_rate != 0:
-            idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
-            selected_idxes = np.random.randint(
-                0, len(idxes), size=int(m_rate * len(idxes))
-            )
-            new_idxes = idxes[selected_idxes]
-            new_idxes = np.sort(new_idxes)
-        else:
-            new_idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
-        return x[new_idxes], y[new_idxes]
+            selected_idxes = np.random.randint(0, len(idxes), size=int(m_rate * len(idxes)))
+            idxes = idxes[selected_idxes]
+        idxes = np.sort(idxes)
+        selected_x = [x[i] for i in idxes]
+        selected_y = y[idxes]
+        return selected_x, selected_y
+        
+    # def _select(self, x, y, low_range, high_range):
+    #     idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
+    #     return x[idxes], y[idxes]
+
+    # def _select_rmm(self, x, y, low_range, high_range, m_rate):
+    #     assert m_rate is not None
+    #     if m_rate != 0:
+    #         idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
+    #         selected_idxes = np.random.randint(
+    #             0, len(idxes), size=int(m_rate * len(idxes))
+    #         )
+    #         new_idxes = idxes[selected_idxes]
+    #         new_idxes = np.sort(new_idxes)
+    #     else:
+    #         new_idxes = np.where(np.logical_and(y >= low_range, y < high_range))[0]
+    #     return x[new_idxes], y[new_idxes]
 
 
 class DummyDataset(Dataset):
@@ -344,6 +372,8 @@ def _get_idata(dataset_name):
         return iCIFAR100()
     elif name == "mnist":
         return iMNIST()
+    elif name == "tiny_imagenet":
+        return TinyImageNet200()
     else:
         raise NotImplementedError("Unknown dataset {}.".format(dataset_name))
 
