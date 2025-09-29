@@ -43,8 +43,8 @@ class FedAvg(BaseLearner):
         is_error_task = True if self._cur_task < self._err_tasks else False
         self.cur_classes = data_manager.get_task(self._cur_task)
         test_indices = data_manager.get_test_classes(self._cur_task)
-        print("current category：", self.cur_classes)
-        print("current test category：", test_indices)
+        print("current category: ", self.cur_classes)
+        print("current test category: ", test_indices)
         print("fc_num", max(test_indices) + 1)
         self._network.update_fc(max(test_indices) + 1)
 
