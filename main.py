@@ -2,7 +2,7 @@ import argparse
 import wandb, os
 
 from methods.fedavg import FedAvg
-from methods.ours import FCL_SSM
+from methods.ours import FCL_SSMR
 from utils.data_manager import DataManager, setup_seed
 import warnings
 
@@ -14,7 +14,9 @@ warnings.filterwarnings('ignore')
 def get_learner(model_name, args):
     name = model_name.lower()
     if name == "ours":
-        return FCL_SSM(args)
+        return FCL_SSMR(args)
+    elif name == "fedavg":
+        return FedAvg(args)
     # elif name == "target":
     #     return Target(args)
     # elif name == "ewc":
@@ -24,9 +26,7 @@ def get_learner(model_name, args):
     # elif name == "fedcil":
     #     return Fedcil(args)
     # elif name == "refed":
-    #     return ReFed(args)
-    elif name == "fedavg":
-        return FedAvg(args)
+    #     return ReFed(args)   
     else:
         assert 0
 
@@ -88,7 +88,7 @@ def train(args):
     for task in range(args["tasks"]):
         print("All params: {}, Trainable params: {}".format(count_parameters(learner._network),
                                                             count_parameters(learner._network,
-                                                                             True)))  # 打印了神经网络模型的总参数数量和可训练参数数量
+                                                                             True))) 
         learner.incremental_train(data_manager)  # train for one task
         cnn_accy, nme_accy = learner.eval_task()
         learner.after_task()
