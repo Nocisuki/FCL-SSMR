@@ -19,7 +19,6 @@ from collections import defaultdict
 import torch.nn.functional as F
 import utils.losses as ls
 
-# from concept_drift.ConceptDriftDetect import ConceptDriftDetector
 from models.base import BaseLearner
 from models.generator import Generator
 from utils import util
@@ -34,7 +33,7 @@ train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(**dict(data_normalize)),
-# ])
+])
 
 # mnist
 # data_normalize = dict(mean=(0.1307,), std=(0.3081,))
@@ -43,15 +42,17 @@ train_transform = transforms.Compose([
 #         transforms.RandomRotation(15),
 #         transforms.ToTensor(),
 #         transforms.Normalize(**dict(data_normalize)),
-    ])
+# ])
 
-# data_normalize = dict(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-#     train_transform = transforms.Compose([
-#         transforms.RandomCrop(64, padding=4),
-#         transforms.RandomHorizontalFlip(),
-#         transforms.ToTensor(),
-#         transforms.Normalize(**dict(data_normalize)),
-#     ])
+# TinyImageNet
+# data_normalize = dict(mean=(0.4802, 0.4481, 0.3975), std=(0.2302, 0.2265, 0.2262))
+# train_transform = transforms.Compose([
+#     transforms.RandomCrop(64, padding=8),
+#     transforms.RandomHorizontalFlip(p=0.5),
+#     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+#     transforms.ToTensor(),
+#     transforms.Normalize(**dict(data_normalize)),
+# ])
 lamda = 1000
 fishermax = 0.0001
 a = 2
@@ -171,7 +172,7 @@ class LabeledImageDataset(torch.utils.data.Dataset):
         self.labels.pop(idx)
 
 
-class FCL_SSM(BaseLearner):
+class FCL_SSMR(BaseLearner):
     def __init__(self, args):
         super().__init__(args)
         self._network = IncrementalNet(args, False)
@@ -199,8 +200,8 @@ class FCL_SSM(BaseLearner):
         is_error_task = True if self._cur_task < self._err_tasks else False
         self.cur_classes = data_manager.get_task(self._cur_task)
         test_indices = data_manager.get_test_classes(self._cur_task)
-        print("current category：", self.cur_classes)
-        print("current test category：", test_indices)
+        print("current category: ", self.cur_classes)
+        print("current test category: ", test_indices)
         if self._cur_task > 0:
             prev_classes = data_manager.get_task(self._cur_task - 1)
             self.intersection_indices = list(set(self.cur_classes).intersection(set(prev_classes)))
@@ -295,7 +296,7 @@ class FCL_SSM(BaseLearner):
                 prog_bar.set_description(info)
                 if self.wandb == 1:
                     wandb.log({'Task_{}, accuracy'.format(self._cur_task): test_acc})
-            # print(cls_acc_list)
+            
             max_len = max(len(i) for i in cls_acc_list)
             cls_acc_list = [np.pad(i, (0, max_len - len(i)), 'constant') for i in cls_acc_list]
             acc_arr = np.array(cls_acc_list)
@@ -321,12 +322,7 @@ class FCL_SSM(BaseLearner):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-        # self.fisher_list[idx] = self.getFisherDiagonal(train_data_loader, model)
-        # self.mean_list[idx] = {
-        #     n: p.clone().detach()
-        #     for n, p in model.named_parameters()
-        #     if p.requires_grad
-        # }
+        
         if save_feature:
             self.save_features(model, train_data_loader, client_id)
         return model.state_dict()
@@ -351,8 +347,7 @@ class FCL_SSM(BaseLearner):
                 self.prev_output = output
                 # for new tasks
                 loss_ce = F.cross_entropy(output, labels)
-                # loss_ewc = self.compute_ewc(idx)
-                # loss_ce = loss_ce + lamda * loss_ewc
+                
                 s_out = model(syn_input)["logits"]
                 with torch.no_grad():
                     t_out = teacher(syn_input.detach())["logits"]
@@ -389,7 +384,7 @@ class FCL_SSM(BaseLearner):
             nc = 3
         elif self.args["dataset"] == "tiny_imagenet":
             img_size = 128
-            img_shape = (3, 128, 128)
+            img_shape = (3, 64, 64)
             nc = 3
         elif self.args["dataset"] == "mnist":
             img_size = 28
@@ -450,10 +445,10 @@ class FCL_SSM(BaseLearner):
         cls_acc = np.where(cls_cnt == 0, 0, cls_hit / cls_cnt)
 
         # print Per Class Accuracy
-        out_cls_acc = 'Per Class Accuracy: %s' % (
-            np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x}))
-        print("----------------------------------------------")
-        print(out_cls_acc)
+        # out_cls_acc = 'Per Class Accuracy: %s' % (
+        #     np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x}))
+        # print("----------------------------------------------")
+        # print(out_cls_acc)
         return cls_acc
 
     def save_features(self, model, dataloader, client_id):
@@ -517,9 +512,9 @@ class FCL_SSM(BaseLearner):
 
     def get_syn_data_loader(self, nums=800, classes=None):
         if self.args["dataset"] in ["cifar10", "cifar100"]:
-            dataset_size = 50000
-        elif self.args["dataset"] == "mnist":
             dataset_size = 60000
+        elif self.args["dataset"] == "mnist":
+            dataset_size = 50000
         elif self.args["dataset"] == "tiny_imagenet":
             dataset_size = 100000
         elif self.args["dataset"] == "imagenet100":
