@@ -13,7 +13,6 @@ class BaseLearner(object):
     def __init__(self, args):
         self._cur_task = -1
         self._err_tasks = args["err"]
-        # 几个任务
         self._increment_classes = args["increment"]
         self._known_classes = 0
         self._total_classes = 0

@@ -6,7 +6,7 @@ from torch import nn
 
 
 class Generator(nn.Module):
-    def __init__(self, nz=100, ngf=64, img_size=32, nc=3, num_classes=57):
+    def __init__(self, nz=100, ngf=64, img_size=32, nc=3, num_classes=60):
         super(Generator, self).__init__()
         self.init_size = img_size // 4
         self.embed = nn.Embedding(num_classes, nz)
