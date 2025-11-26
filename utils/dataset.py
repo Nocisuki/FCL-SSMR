@@ -6,7 +6,7 @@ import csv
 from torch.utils.data import Dataset
 
 
-data_dir = os.path.join(os.environ['HOME'], "FCL-SSMR/datasets")
+data_dir = os.path.join(os.environ['HOME'], "PycharmProjects/FCIL-gan/datasets")
 # print(data_dir)
 
 
@@ -44,6 +44,24 @@ class iMNIST(iData):
             test_dataset.targets
         )
 
+class iFMNIST(iData):
+    use_path = False
+    train_trsf = [
+        transforms.RandomCrop(28, padding=4),
+        transforms.RandomRotation(15),
+    ]
+    test_trsf = []
+    common_trsf = [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.2860,), std=(0.3530,))  # Fashion-MNIST 官方统计
+    ]
+    class_order = np.arange(10).tolist()
+
+    def download_data(self):
+        train_dataset = datasets.FashionMNIST(data_dir, train=True,  download=True)
+        test_dataset  = datasets.FashionMNIST(data_dir, train=False, download=True)
+        self.train_data, self.train_targets = train_dataset.data.numpy(), np.array(train_dataset.targets)
+        self.test_data,  self.test_targets  = test_dataset.data.numpy(),  np.array(test_dataset.targets)
 
 class iCIFAR10(iData):
     use_path = False
@@ -101,7 +119,7 @@ class iCIFAR100(iData):
         )
 
 class TinyImageNet200(iData):
-    use_path = True  
+    use_path = True  # 保留路径，按原始 _setup_data 逻辑
     train_trsf = [
         transforms.RandomResizedCrop(64),
         transforms.RandomHorizontalFlip(),
@@ -120,12 +138,15 @@ class TinyImageNet200(iData):
         train_dir = os.path.join(data_dir, "tiny-imagenet-200", "train")
         val_dir = os.path.join(data_dir, "tiny-imagenet-200", "val")
 
+        # 训练集
         train_dset = datasets.ImageFolder(train_dir)
-        self.train_data = [path for path, _ in train_dset.imgs] 
+        self.train_data = [path for path, _ in train_dset.imgs]  # 只保存路径
         self.train_targets = np.array([label for _, label in train_dset.imgs])
 
+        # 类名到索引映射
         wnids_to_idx = train_dset.class_to_idx
 
+        # 验证集
         self.test_data, self.test_targets = self._load_val_images(val_dir, wnids_to_idx)
 
     def _load_val_images(self, val_dir, wnids_to_idx):
@@ -140,6 +161,6 @@ class TinyImageNet200(iData):
         for img_name, class_name in mapping.items():
             img_path = os.path.join(img_dir, img_name)
             if os.path.exists(img_path):
-                images.append(img_path) 
+                images.append(img_path)  # 保存路径
                 labels.append(wnids_to_idx[class_name])
         return images, np.array(labels)
