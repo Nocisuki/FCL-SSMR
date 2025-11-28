@@ -79,3 +79,7 @@ To run on Leeds Sports Pose, excuate:
 To run on SHIPS, excuate:
 
     python main.py --dataset=ships --method=ours --task=3 --beta=0 --g_rounds=1500 --kd=5 --overlap_rate=0.25
+
+## Experimental Results
+### Main Performance Comparison
+![Main Results](results/figures/main_results.png)
