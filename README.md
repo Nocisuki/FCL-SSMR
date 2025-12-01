@@ -1,5 +1,5 @@
 # Code for FCL-SSMR
-> Federated Continual Learning over Class-Overlapping Data Stream via Selective Synthetic Memory Replay
+> Federated Continual Learning under Class-Overlap
 
 ## Requairments
 The needed libraries are in requirements.txt.
@@ -82,4 +82,5 @@ To run on SHIPS, excuate:
 
 ## Experimental Results
 ### Main Performance Comparison
+
 ![Main Results](results/figures/main_results.png)
